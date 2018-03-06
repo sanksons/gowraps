@@ -3,6 +3,7 @@ package mysqldb
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -130,6 +131,8 @@ func (this *MySqlConnection) FetchRowByQuery(query string, holder interface{}, a
 }
 
 func (this *MySqlConnection) FetchRowsByQuery(query string, holder interface{}, args ...interface{}) error {
+	fmt.Println("fetch rows by query")
+	fmt.Printf("%v", args)
 	var rows *sql.Rows
 	var err error
 	if this.IsInTransaction() {
@@ -142,6 +145,7 @@ func (this *MySqlConnection) FetchRowsByQuery(query string, holder interface{}, 
 	}
 
 	mysqlRows := MySqlRows{rows: rows}
+	fmt.Println("Going for scan")
 	return mysqlRows.Scan(holder)
 }
 
@@ -166,36 +170,74 @@ func (this *MySqlRows) Scan(holder interface{}) error {
 	child := reflectObj.GetChild()
 	var structInfo map[string]int
 	var err error
-	if child.CheckIfStruct() {
-		structInfo, err = reflexer.GetInfoAboutFieldsofStruct(*child)
-		if err != nil {
-			return fmt.Errorf("Scan Failed: %s", err.Error())
-		}
-		columns, err := this.GetColumns()
-		if err != nil {
-			return fmt.Errorf("Could not get columns Info: %s", err.Error())
-		}
-		this.rows.Next()
 
+	var childStruct *reflexer.ReflectObj
+	var isMulti bool
+	if child.CheckIfSlice() {
+		//Its probably a slice of structs. Drill down to get to struct.
+		isMulti = true
+		if !child.HasChild() {
+			return fmt.Errorf("Expected slice of structs but didn't got it.")
+		}
+		childStruct = child.GetChild()
+	} else if child.CheckIfStruct() {
+		//Its  a struct itself.
+		childStruct = child
+		isMulti = false
+	} else {
+		return fmt.Errorf("Its neither a struct nor slice of structs")
+	}
+
+	//Get Column info
+	columns, err := this.GetColumns()
+	if err != nil {
+		return fmt.Errorf("Could not get columns Info: %s", err.Error())
+	}
+	//Get info about struct
+	structInfo, err = reflexer.GetInfoAboutFieldsofStruct(*childStruct)
+	if err != nil {
+		return fmt.Errorf("Scan Failed: %s", err.Error())
+	}
+	var iteration int
+	var structList []reflect.Value
+	for this.rows.Next() {
+		//break out of loop incase we only need to fetch single row.
+		iteration++
+		if !isMulti && iteration > 1 {
+			break
+		}
+		var rowStruct reflect.Value
+		if isMulti {
+			rowStruct = reflect.New(childStruct.T).Elem()
+
+		} else {
+			rowStruct = childStruct.V
+		}
 		var final []interface{}
 		for _, col := range columns {
 			col = strings.ToLower(col)
 			index, ok := structInfo[col]
 			if !ok {
-				final = append(final, nil)
+				var skipVal string = ""
+				pointerSkipval := &skipVal
+				final = append(final, &pointerSkipval)
 				continue //skip columns not found in struct
 			}
-			final = append(final, child.V.FieldByIndex([]int{index}).Interface())
-
+			final = append(final, rowStruct.FieldByIndex([]int{index}).Addr().Interface())
 		}
-		return this.rows.Scan(final...)
-
-	} else if child.CheckIfSlice() {
-		return ErrToBeImpl
-	} else {
-		return ErrToBeImpl
+		err = this.rows.Scan(final...)
+		if err != nil {
+			return err
+		}
+		if isMulti {
+			structList = append(structList, rowStruct)
+		}
 	}
-
+	if isMulti {
+		//!!IMPORTANT set the data in slice.
+		tmp := reflect.Append(child.V, structList...)
+		child.V.Set(tmp)
+	}
 	return nil
 }
 
