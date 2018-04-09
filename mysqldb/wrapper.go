@@ -39,11 +39,12 @@ type MySqlConfig struct {
 //converts the configuration to the format understood by go sql driver.
 func (this *MySqlConfig) FormatDSN() string {
 	c := mysql.Config{
-		User:   this.User,
-		Passwd: this.Passwd,
-		Net:    "tcp",
-		Addr:   this.Addr,
-		DBName: this.DBName,
+		User:      this.User,
+		Passwd:    this.Passwd,
+		Net:       "tcp",
+		Addr:      this.Addr,
+		DBName:    this.DBName,
+		ParseTime: true,
 	}
 	return c.FormatDSN()
 }
@@ -93,6 +94,29 @@ func (this *MySqlConnection) GetRawTx() *sql.Tx {
 //Access to underlying db object.
 func (this *MySqlConnection) GetRawConnection() *sql.DB {
 	return this.db
+}
+
+func (this *MySqlConnection) QueryRow(query string, args ...interface{}) *sql.Row {
+	var row *sql.Row
+	if this.IsInTransaction() {
+		row = this.tx.QueryRow(query, args...)
+	} else {
+		row = this.db.QueryRow(query, args...)
+	}
+	return row
+}
+
+//Execute a query that does not return rows
+// example INSERT, DELETE, UPDATE
+func (this *MySqlConnection) Execute(query string, args ...interface{}) (sql.Result, error) {
+	var result sql.Result
+	var err error
+	if this.IsInTransaction() {
+		result, err = this.tx.Exec(query, args...)
+	} else {
+		result, err = this.db.Exec(query, args...)
+	}
+	return result, err
 }
 
 //Wrapper for Prepare() sql method.
