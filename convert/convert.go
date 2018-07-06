@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-func Interface2int(i interface{}) (int, error) {
+func ToInt(i interface{}) (int, error) {
 	switch v := i.(type) {
 
 	case int:
@@ -20,7 +20,7 @@ func Interface2int(i interface{}) (int, error) {
 	}
 }
 
-func Interface2string(i interface{}) (string, error) {
+func ToString(i interface{}) (string, error) {
 	switch v := i.(type) {
 
 	case int:

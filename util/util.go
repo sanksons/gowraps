@@ -3,6 +3,8 @@ package util
 import (
 	"fmt"
 	"strings"
+
+	"github.com/go-errors/errors"
 )
 
 func GetMultiInsertQuery(table string, fields []string, values [][]interface{}) string {
@@ -71,4 +73,13 @@ func OuterJoinInt(set1 []int, set2 []int) (s1 []int, s2 []int) {
 		}
 	}
 	return
+}
+
+//panic
+func PanicHandler(msg string) {
+	if r := recover(); r != nil {
+		fmt.Println("Attention!!!   Panic Occurred !!!")
+		fmt.Println(msg)
+		fmt.Println(errors.Wrap(r, 2).ErrorStack())
+	}
 }
