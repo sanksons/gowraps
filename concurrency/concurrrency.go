@@ -1,3 +1,4 @@
+// A utility library to make executing parallel calls more easier and surprise free.
 package concurrency
 
 import (

@@ -9,12 +9,12 @@ import (
 func TestParallelize(t *testing.T) {
 	//prepare data
 	data := make([][]int, 10)
-	for k, _ := range data {
+	for k := range data {
 		data[k] = []int{k + 10, k + 20}
 	}
 	log.Printf("\n%+v\n", data)
 
-	fss := make([]func() interface{}, 0)
+	var fss []func() interface{}
 	for _, v := range data {
 
 		r := func(a, b int) func() interface{} {
@@ -41,7 +41,7 @@ func TestParallelize(t *testing.T) {
 func TestParallelizeThrottled(t *testing.T) {
 	//prepare data
 	data := make([][]int, 10)
-	for k, _ := range data {
+	for k := range data {
 		data[k] = []int{k + 10, k + 20}
 	}
 	log.Printf("\n%+v\n", data)
