@@ -10,8 +10,8 @@ import (
 	reflexer "github.com/sanksons/go-reflexer"
 )
 
-//This does not creates any connection. It just creates an empty pool based on the supplied config.
-//The connection is opened when Prepare statement is called.
+// This does not creates any connection. It just creates an empty pool based on the supplied config.
+// The connection is opened when Prepare statement is called.
 func Initiate(config MySqlConfig) (*MySqlPool, error) {
 	db, err := sql.Open("mysql", config.FormatDSN())
 	if err != nil {
@@ -22,11 +22,11 @@ func Initiate(config MySqlConfig) (*MySqlPool, error) {
 	return &MySqlPool{db: db}, nil
 }
 
-//Define custom errors
+// Define custom errors
 var ErrNoRows = sql.ErrNoRows
 var ErrToBeImpl = fmt.Errorf("To be Implemented")
 
-//Takesup the configuration for mysql connection.
+// Takesup the configuration for mysql connection.
 type MySqlConfig struct {
 	User               string
 	Passwd             string
@@ -36,7 +36,7 @@ type MySqlConfig struct {
 	MaxIdleConnections int
 }
 
-//converts the configuration to the format understood by go sql driver.
+// converts the configuration to the format understood by go sql driver.
 func (this *MySqlConfig) FormatDSN() string {
 	c := mysql.Config{
 		User:      this.User,
@@ -55,43 +55,43 @@ type MySqlPool struct {
 	db *sql.DB
 }
 
-//Ping checks if we can still access the database.
+// Ping checks if we can still access the database.
 func (this *MySqlPool) Ping() error {
 	return this.db.Ping()
 }
 
-//GetConnection returns a fresh *MySqlConnection object which can be further used to perform queries.
+// GetConnection returns a fresh *MySqlConnection object which can be further used to perform queries.
 func (this *MySqlPool) GetConnection() *MySqlConnection {
 	connection := &MySqlConnection{db: this.db}
 	return connection
 }
 
-//Close the DBpool
+// Close the DBpool
 func (this *MySqlPool) Close() error {
 	return this.db.Close()
 }
 
-//On a broader level this can be seen as a Mysql connection.
+// On a broader level this can be seen as a Mysql connection.
 type MySqlConnection struct {
 	db   *sql.DB
 	tx   *sql.Tx
 	stmt *sql.Stmt
 }
 
-//A dummy function which pretends to close the MySqlConnection
-//but actually MySqlConnection is a virtual entity that does not make any connection, thus does not needs to be closed.
+// A dummy function which pretends to close the MySqlConnection
+// but actually MySqlConnection is a virtual entity that does not make any connection, thus does not needs to be closed.
 // Its actually the stmt and tx that needs to be closed. Closing of stmt and tx is internally handled by this wrapper.
 // SO, its safe if the user does not call this close method.But for clarity purpose user should call this method.
 func (this *MySqlConnection) Close() error {
 	return nil
 }
 
-//Access to underlying tx object.
+// Access to underlying tx object.
 func (this *MySqlConnection) GetRawTx() *sql.Tx {
 	return this.tx
 }
 
-//Access to underlying db object.
+// Access to underlying db object.
 func (this *MySqlConnection) GetRawConnection() *sql.DB {
 	return this.db
 }
@@ -106,7 +106,7 @@ func (this *MySqlConnection) QueryRow(query string, args ...interface{}) *sql.Ro
 	return row
 }
 
-//Execute a query that does not return rows
+// Execute a query that does not return rows
 // example INSERT, DELETE, UPDATE
 func (this *MySqlConnection) Execute(query string, args ...interface{}) (sql.Result, error) {
 	var result sql.Result
@@ -119,7 +119,7 @@ func (this *MySqlConnection) Execute(query string, args ...interface{}) (sql.Res
 	return result, err
 }
 
-//Wrapper for Prepare() sql method.
+// Wrapper for Prepare() sql method.
 func (this *MySqlConnection) PrepareStatement(query string) error {
 	var stmt *sql.Stmt
 	var err error
@@ -136,7 +136,7 @@ func (this *MySqlConnection) PrepareStatement(query string) error {
 	return nil
 }
 
-//map custom errors to sql driver errors.
+// map custom errors to sql driver errors.
 func (this *MySqlConnection) prepareError(err error) error {
 
 	if err == sql.ErrNoRows {
@@ -149,9 +149,10 @@ func (this *MySqlConnection) prepareError(err error) error {
 // You need to supply pointer to struct(*struct) as holder for row values.
 //
 // Usage:
-//  conn := pool.GetConnection()
-//  holder := User{}
-//  conn.FetchRowByQuery(query, &holder, params)
+//
+//	conn := pool.GetConnection()
+//	holder := User{}
+//	conn.FetchRowByQuery(query, &holder, params)
 func (this *MySqlConnection) FetchRowByQuery(query string, holder interface{}, args ...interface{}) error {
 	return this.FetchRowsByQuery(query, holder, args...)
 }
@@ -160,9 +161,10 @@ func (this *MySqlConnection) FetchRowByQuery(query string, holder interface{}, a
 // You need to supply pointer to slice of struct (*[]struct) as holder.
 //
 // Usage:
-//  conn := pool.GetConnection()
-//  holder := []User{}
-//  conn.FetchRowByQuery(query, &holder, params)
+//
+//	conn := pool.GetConnection()
+//	holder := []User{}
+//	conn.FetchRowByQuery(query, &holder, params)
 func (this *MySqlConnection) FetchRowsByQuery(query string, holder interface{}, args ...interface{}) error {
 	var rows *sql.Rows
 	var err error
@@ -180,7 +182,7 @@ func (this *MySqlConnection) FetchRowsByQuery(query string, holder interface{}, 
 
 //Transaction related functions below
 
-//Start a Transaction.
+// Start a Transaction.
 func (this *MySqlConnection) StartTransaction() error {
 	//Before starting a new transaction on this connection
 	//First, close previous transaction if any open on this connection.
@@ -194,8 +196,8 @@ func (this *MySqlConnection) StartTransaction() error {
 	return nil
 }
 
-//Commit the existing transaction, if any
-//It automatically closes the Tx object, SO you not need to do it explicitely.
+// Commit the existing transaction, if any
+// It automatically closes the Tx object, SO you not need to do it explicitely.
 func (this *MySqlConnection) Commit() error {
 	if !this.IsInTransaction() {
 		return nil
@@ -208,7 +210,7 @@ func (this *MySqlConnection) Commit() error {
 	return nil
 }
 
-//It automatically closes the Tx object, SO you not need to do it explicitely.
+// It automatically closes the Tx object, SO you not need to do it explicitely.
 func (this *MySqlConnection) RollBack() error {
 	//First check if we are in a transaction
 	//If so, rollback the transaction and reset every thing.
@@ -234,16 +236,18 @@ func (this *MySqlConnection) resetTx() {
 	this.tx = nil
 }
 
-//Contains rows object returned from db
+// Contains rows object returned from db
 type MySqlRows struct {
 	rows *sql.Rows
 }
 
-//Scans the data from sql.Rows into the holder provided
+// Scans the data from sql.Rows into the holder provided
 //
 // Holder can either be:
 // Pointer to struct (*struct)
-//      or
+//
+//	or
+//
 // Pointer to slice of structs (*[]struct).
 func (this *MySqlRows) scan(holder interface{}) error {
 
@@ -333,7 +337,7 @@ func (this *MySqlRows) scan(holder interface{}) error {
 	return nil
 }
 
-//Get the columns returned by query.
+// Get the columns returned by query.
 func (this *MySqlRows) getColumns() (columns []string, err error) {
 	columns, err = this.rows.Columns()
 	return
